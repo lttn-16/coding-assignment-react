@@ -3,8 +3,8 @@ import { Ticket } from "@acme/shared-models";
 import { AgGridReact } from "ag-grid-react";
 import { useMemo } from "react";
 import { ColDef, ColGroupDef } from "ag-grid-community";
-import { Badge } from "antd";
-
+import { Badge, Button } from "antd";
+import { useNavigate } from "react-router-dom";
 interface ITableProps {
     data: Ticket[];
     loading?: boolean;
@@ -17,6 +17,7 @@ export interface TableRef {
 
 const Table = forwardRef<TableRef, ITableProps>(({ data, loading }, ref) => {
     const gridRef = useRef<AgGridReact<Ticket>>(null);
+    const navigate = useNavigate();
 
     useImperativeHandle(ref, () => ({
         getSelectedRows: () => gridRef.current?.api.getSelectedRows() ?? [],
@@ -26,7 +27,19 @@ const Table = forwardRef<TableRef, ITableProps>(({ data, loading }, ref) => {
     const columnDefs: (ColDef<Ticket, any> | ColGroupDef<Ticket> | any)[] =
         useMemo(() => {
             return [
-                { field: "id", headerName: "ID", width: 70 },
+                {
+                    field: "id",
+                    headerName: "ID",
+                    width: 80,
+                    cellRenderer: (params: { value: number }) => (
+                        <Button
+                            type="link"
+                            onClick={() => navigate(`/ticket/${params.value}`)}
+                        >
+                            {params.value}
+                        </Button>
+                    ),
+                },
                 {
                     field: "description",
                     headerName: "Description",

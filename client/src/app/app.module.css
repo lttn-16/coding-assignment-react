@@ -7,6 +7,17 @@ body {
   padding: 0;
 }
 
+.link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.link:visited {
+  color: inherit;
+}
+
 .header {
   padding: 0 16px;
+  color: black;
+  text-decoration: none;
 }
