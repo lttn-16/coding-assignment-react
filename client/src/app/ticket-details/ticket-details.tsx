@@ -1,12 +1,21 @@
 import { useParams } from "react-router-dom";
 import styles from "./ticket-details.module.css";
-import { Ticket } from "@acme/shared-models";
-import { useEffect, useState } from "react";
+import { Ticket, User } from "@acme/shared-models";
+import { useEffect, useMemo, useState } from "react";
 import { Card, Select } from "antd";
+import { useUsers } from "client/src/hooks/useUsers";
 
 export function TicketDetails() {
     const { id } = useParams<{ id: string }>();
     const [ticket, setTicket] = useState<Ticket | null>(null);
+    const { data: users } = useUsers();
+
+    const assigneeOptions = useMemo(() => {
+        return users?.map((user: User) => ({
+            value: user.id,
+            label: user.name,
+        }));
+    }, [users]);
 
     useEffect(() => {
         if (!id) return;
@@ -22,9 +31,21 @@ export function TicketDetails() {
         fetchTicket();
     }, [id]);
 
-    const handleChange = (value: string) => {
+    const handleChange = async (value: number) => {
+        try {
+            await fetch(`/api/tickets/${id}/assign/${value}`, {
+                method: "PUT",
+            });
+            setTicket((prev) => prev && { ...prev, assigneeId: value });
+        } catch (error) {
+            setTicket((prev) => prev && { ...prev, assigneeId: value });
+        }
+    };
 
-    }
+    const getAssigneeName = (assigneeId: number | null) => {
+        const assignee = users?.find((user: User) => user.id === assigneeId);
+        return assignee ? assignee.name : "Unassigned";
+    };
 
     return (
         <div className={styles["container"]}>
@@ -43,7 +64,7 @@ export function TicketDetails() {
                             <b>Assignee:</b>{" "}
                             {`${
                                 ticket?.assigneeId
-                                    ? ticket?.assigneeId
+                                    ? getAssigneeName(ticket.assigneeId)
                                     : "Unassigned"
                             }`}
                         </p>
@@ -55,14 +76,10 @@ export function TicketDetails() {
                     <h3>Assigned To:</h3>
                     <div>
                         <Select
-                            defaultValue="lucy"
                             style={{ width: 400 }}
                             onChange={handleChange}
-                            options={[
-                                { value: "jack", label: "Jack" },
-                                { value: "lucy", label: "Lucy" },
-                                { value: "Yiminghe", label: "yiminghe" },
-                            ]}
+                            options={assigneeOptions}
+                            value={ticket.assigneeId ?? undefined}
                         />
                     </div>
                 </>

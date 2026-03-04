@@ -8,6 +8,7 @@ import { Button, Dropdown, Input, MenuProps, Space } from "antd";
 import { debounce, keyBy } from "lodash";
 import { EllipsisOutlined } from "@ant-design/icons";
 import AddModal from "./modal";
+import { useUsers } from "client/src/hooks/useUsers";
 
 const { Search } = Input;
 
@@ -16,7 +17,7 @@ export function Tickets() {
     const [open, setOpen] = useState(false);
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [filterStatus, setFilterStatus] = useState<string | null>(null);
-    const [users, setUsers] = useState<User[]>([]);
+    const { data: users = [] } = useUsers();
     const tableRef = useRef<TableRef>(null);
     const queryClient = useQueryClient();
 
@@ -93,15 +94,6 @@ export function Tickets() {
         ],
         [],
     );
-
-    const getAllUser = async () => {
-        const usersData = await fetch("/api/users").then((res) => res.json());
-        setUsers(usersData);
-    };
-
-    useEffect(() => {
-        getAllUser();
-    }, []);
 
     const handleChangeStatus: MenuProps["onClick"] = async (e) => {
         try {
