@@ -1,4 +1,4 @@
-import React from "react";
+import { forwardRef, useImperativeHandle, useRef } from "react";
 import { Ticket } from "@acme/shared-models";
 import { AgGridReact } from "ag-grid-react";
 import { useMemo } from "react";
@@ -10,7 +10,19 @@ interface ITableProps {
     loading?: boolean;
 }
 
-const Table: React.FC<ITableProps> = ({ data, loading }) => {
+export interface TableRef {
+    getSelectedRows: () => Ticket[];
+    clearSelection: () => void;
+}
+
+const Table = forwardRef<TableRef, ITableProps>(({ data, loading }, ref) => {
+    const gridRef = useRef<AgGridReact<Ticket>>(null);
+
+    useImperativeHandle(ref, () => ({
+        getSelectedRows: () => gridRef.current?.api.getSelectedRows() ?? [],
+        clearSelection: () => gridRef.current?.api.deselectAll(),
+    }));
+
     const columnDefs: (ColDef<Ticket, any> | ColGroupDef<Ticket> | any)[] =
         useMemo(() => {
             return [
@@ -43,6 +55,7 @@ const Table: React.FC<ITableProps> = ({ data, loading }) => {
     return (
         <div style={{ width: "100%", height: "500px" }}>
             <AgGridReact
+                ref={gridRef}
                 columnDefs={columnDefs}
                 rowData={data}
                 loading={loading}
@@ -52,6 +65,6 @@ const Table: React.FC<ITableProps> = ({ data, loading }) => {
             />
         </div>
     );
-};
+});
 
 export default Table;
