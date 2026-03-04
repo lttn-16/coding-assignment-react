@@ -7,12 +7,15 @@ import Table, { TableRef } from "./table";
 import { Button, Dropdown, Input, MenuProps, Space } from "antd";
 import { debounce, keyBy } from "lodash";
 import { EllipsisOutlined } from "@ant-design/icons";
+import AddModal from "./modal";
 
 const { Search } = Input;
 
 export function Tickets() {
     const [searchText, setSearchText] = useState("");
+    const [open, setOpen] = useState(false);
     const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [filterStatus, setFilterStatus] = useState<string | null>(null);
     const [users, setUsers] = useState<User[]>([]);
     const tableRef = useRef<TableRef>(null);
     const queryClient = useQueryClient();
@@ -48,21 +51,36 @@ export function Tickets() {
         });
     };
 
-    const filteredTickets = useMemo(
-        () =>
-            debouncedSearch
-                ? formatDataUser(
-                      tickets.filter((t) =>
-                          t.description
-                              ?.toLowerCase()
-                              .includes(debouncedSearch),
-                      ),
-                  )
-                : formatDataUser(tickets),
-        [tickets, debouncedSearch],
-    );
+    const filteredTickets = useMemo(() => {
+        let result = tickets;
+        if (filterStatus === TICKET_STATUS.COMPLETED) {
+            result = result.filter((t) => t.completed);
+        } else if (filterStatus === TICKET_STATUS.INCOMPLETE) {
+            result = result.filter((t) => !t.completed);
+        }
+        if (debouncedSearch) {
+            result = result.filter((t) =>
+                t.description?.toLowerCase().includes(debouncedSearch),
+            );
+        }
+        return formatDataUser(result);
+    }, [tickets, debouncedSearch, filterStatus]);
 
     const items = useMemo(
+        () => [
+            {
+                key: TICKET_STATUS.COMPLETED,
+                label: "Completed",
+            },
+            {
+                key: TICKET_STATUS.INCOMPLETE,
+                label: "Incomplete",
+            },
+        ],
+        [],
+    );
+
+    const filterItems = useMemo(
         () => [
             {
                 key: TICKET_STATUS.COMPLETED,
@@ -100,7 +118,7 @@ export function Tickets() {
                 }
             } else {
                 for (const ticket of selected) {
-                    if(!ticket.completed) continue;
+                    if (!ticket.completed) continue;
                     await fetch(`/api/tickets/${ticket.id}/complete`, {
                         method: "DELETE",
                     });
@@ -114,6 +132,32 @@ export function Tickets() {
         }
     };
 
+    const handleAddTicket = async (description: string) => {
+        try {
+            await fetch("/api/tickets", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ description }),
+            });
+            setOpen(false);
+            queryClient.invalidateQueries({
+                queryKey: [QUERY_KEY.GET_TICKETS],
+            });
+        } catch (error) {
+            console.error("Failed to add ticket:", error);
+        }
+    };
+
+    const handleFilterStatus: MenuProps["onClick"] = (e) => {
+        if (e.key === TICKET_STATUS.COMPLETED) {
+            setFilterStatus(TICKET_STATUS.COMPLETED);
+        } else {
+            setFilterStatus(TICKET_STATUS.INCOMPLETE);
+        }
+    }
+
     return (
         <div className={styles["container"]}>
             <h2>Ticket List</h2>
@@ -125,11 +169,22 @@ export function Tickets() {
                     onChange={handleChange}
                 />
                 <div className={styles["button-group"]}>
-                    <Button type="primary">New Ticket</Button>
+                    <Button type="primary" onClick={() => setOpen(true)}>
+                        New Ticket
+                    </Button>
                     <Space.Compact>
                         <Button>Change status</Button>
                         <Dropdown
                             menu={{ items, onClick: handleChangeStatus }}
+                            placement="bottomRight"
+                        >
+                            <Button icon={<EllipsisOutlined />} />
+                        </Dropdown>
+                    </Space.Compact>
+                    <Space.Compact>
+                        <Button className={styles["button"]}>Filter status</Button>
+                        <Dropdown
+                            menu={{ items: filterItems, onClick: handleFilterStatus }}
                             placement="bottomRight"
                         >
                             <Button icon={<EllipsisOutlined />} />
@@ -144,6 +199,11 @@ export function Tickets() {
                     loading={isPending}
                 />
             </div>
+            <AddModal
+                open={open}
+                onClose={() => setOpen(false)}
+                onSubmit={handleAddTicket}
+            />
         </div>
     );
 }
